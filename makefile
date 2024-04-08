@@ -20,7 +20,7 @@ build_dir:
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/shell: $(OBJ_FILES)
-	$(CC) $^ -o $@
+	$(CC) $^ -o $@ -lfuse
 
 $(BUILD_DIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
