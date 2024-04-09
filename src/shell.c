@@ -1,4 +1,4 @@
-#include "sfs.h"
+#include "../include/sfs.h"
 
 // gcc shell.c -o FS `pkg-config fuse --cflags --libs`
 // ./shell -f /home/alexander/mnt
