@@ -6,12 +6,12 @@
 #define block_size 1024
 
 typedef struct superblock {
-    char datablocks[block_size * 100];  // общее количество блоков данных
-    char data_bitmap[105];              // массив номеров блоков данных, которые доступны
-    char inode_bitmap[105];             // массив номеров индексных узлов, которые доступны
+    char datablocks[block_size * 100];  // Total number of data blocks
+    char data_bitmap[105];              // Array of available data block numbers
+    char inode_bitmap[105];             // Array of available inode numbers
 } superblock;
 
-extern superblock spblock;
+extern superblock s_block;
 
 void superblock_init();
 int find_free_db();

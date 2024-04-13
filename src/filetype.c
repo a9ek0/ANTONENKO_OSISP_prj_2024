@@ -1,17 +1,15 @@
 #include "../include/filetype.h"
 
-filetype *filetype_from_path(char *path) {
+filetype *filetype_from_path(const char *path) {
     char curr_folder[100];
     char *path_name = malloc(strlen(path) + 2);
-
     strcpy(path_name, path);
 
     filetype *curr_node = root;
 
-    fflush(stdin);
-
     if (strcmp(path_name, "/") == 0)
         return curr_node;
+
     if (path_name[0] != '/') {
         printf("INCORRECT PATH\n");
         exit(1);
@@ -35,8 +33,8 @@ filetype *filetype_from_path(char *path) {
 
             flag = 0;
             for (int i = 0; i < curr_node->num_children; i++) {
-                if (strcmp((curr_node->children)[i]->name, curr_folder) == 0) {
-                    curr_node = (curr_node->children)[i];
+                if (strcmp(curr_node->children[i]->name, curr_folder) == 0) {
+                    curr_node = curr_node->children[i];
                     flag = 1;
                     break;
                 }
@@ -46,8 +44,8 @@ filetype *filetype_from_path(char *path) {
         } else {
             strcpy(curr_folder, path_name);
             for (int i = 0; i < curr_node->num_children; i++) {
-                if (strcmp((curr_node->children)[i]->name, curr_folder) == 0) {
-                    curr_node = (curr_node->children)[i];
+                if (strcmp(curr_node->children[i]->name, curr_folder) == 0) {
+                    curr_node = curr_node->children[i];
                     return curr_node;
                 }
             }

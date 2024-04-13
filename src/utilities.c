@@ -1,30 +1,27 @@
 #include "../include/utilities.h"
 
 void tree_to_array(filetype *queue, int *front, int *rear, int *index) {
-    if (rear < front)
+    if (*rear < *front || *index > 30) {
         return;
-    if (*index > 30)
-        return;
+    }
 
     filetype curr_node = queue[*front];
-    *front += 1;
+    (*front)++;
     file_array[*index] = curr_node;
-    *index += 1;
+    (*index)++;
 
     if (*index < 6) {
         if (curr_node.valid) {
             int i;
-            for (i = 0; i < curr_node.num_children; i++) {
-                if (*rear < *front)
-                    *rear = *front;
+            for (i = 0; i < curr_node.num_children && *rear >= *front; i++) {
                 queue[*rear] = *(curr_node.children[i]);
-                *rear += 1;
+                (*rear)++;
             }
             while (i < 5) {
                 filetype waste_node;
                 waste_node.valid = 0;
                 queue[*rear] = waste_node;
-                *rear += 1;
+                (*rear)++;
                 i++;
             }
         } else {
@@ -33,7 +30,7 @@ void tree_to_array(filetype *queue, int *front, int *rear, int *index) {
                 filetype waste_node;
                 waste_node.valid = 0;
                 queue[*rear] = waste_node;
-                *rear += 1;
+                (*rear)++;
                 i++;
             }
         }

@@ -5,6 +5,7 @@ filetype *root;
 filetype file_array[31];
 
 int save_contents() {
+    // Allocate space for the queue to store filetypes
     filetype *queue = malloc(sizeof(filetype) * 60);
     int front = 0;
     int rear = 0;
@@ -12,33 +13,41 @@ int save_contents() {
     int index = 0;
     tree_to_array(queue, &front, &rear, &index);
 
-    FILE *fd = fopen("file_structure.bin", "wb");
-    FILE *fd1 = fopen("super.bin", "wb");
+    // Open file for storing file structure
+    FILE *file_structure = fopen("file_structure.bin", "wb");
+    // Open file for storing superblock
+    FILE *superblock_file = fopen("super.bin", "wb");
 
-    fwrite(file_array, sizeof(filetype) * 31, 1, fd);
-    fwrite(&spblock, sizeof(superblock), 1, fd1);
+    // Write array of filetypes to file_structure
+    fwrite(file_array, sizeof(filetype) * 31, 1, file_structure);
+    // Write superblock structure to superblock_file
+    fwrite(&spblock, sizeof(superblock), 1, superblock_file);
 
-    fclose(fd);
-    fclose(fd1);
+    fclose(file_structure);
+    fclose(superblock_file);
 
+    free(queue);
     return 0;
 }
 
 void root_dir_init() {
-    spblock.inode_bitmap[1] = 1;        // marking it with 0
-    root = (filetype *) malloc(sizeof(filetype));
+    spblock.inode_bitmap[1] = 1; // Mark inode 1 as used
+    root = malloc(sizeof(filetype));
 
+    // Set initial values for root directory
     strcpy(root->path, "/");
     strcpy(root->name, "/");
     strcpy(root->test, "test");
     strcpy(root->type, "directory");
 
-    root->inum = (inode *) malloc(sizeof(inode));
+    // Allocate memory for inode and set its properties
+    root->inum = malloc(sizeof(inode));
     root->inum->permissions = S_IFDIR | 0777;
-    root->inum->c_time = time(NULL);
-    root->inum->a_time = time(NULL);
-    root->inum->m_time = time(NULL);
-    root->inum->b_time = time(NULL);
+    time_t currentTime = time(NULL);
+    root->inum->c_time = currentTime;
+    root->inum->a_time = currentTime;
+    root->inum->m_time = currentTime;
+    root->inum->b_time = currentTime;
     root->inum->group_id = getgid();
     root->inum->user_id = getuid();
     root->children = NULL;
@@ -48,9 +57,11 @@ void root_dir_init() {
     root->valid = 1;
     root->inum->size = 0;
 
+    // Find a free inode index and assign it to root
     int index = find_free_inode();
     root->inum->number = index;
     root->inum->blocks = 0;
 
+    // Save the contents to disk
     save_contents();
 }
