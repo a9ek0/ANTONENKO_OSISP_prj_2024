@@ -1,8 +1,9 @@
 #include "../include/superblock.h"
+superblock s_block;
 
 void superblock_init() {
-    memset(s_block.data_bitmap, '0', sizeof(spblock.data_bitmap));
-    memset(s_block.inode_bitmap, '0', sizeof(spblock.inode_bitmap));
+    memset(s_block.data_bitmap, '0', sizeof(s_block.data_bitmap));
+    memset(s_block.inode_bitmap, '0', sizeof(s_block.inode_bitmap));
 }
 
 int find_free_db() {

@@ -10,7 +10,6 @@ typedef struct inode inode;
 
 typedef struct filetype {
     int valid;                   // Flag indicating if the filetype is valid
-    char test[10];               // Test field for demonstration purposes
     char path[100];              // Path of the filetype
     char name[100];              // Name of the filetype
     inode *inum;                 // Pointer to the inode associated with the filetype

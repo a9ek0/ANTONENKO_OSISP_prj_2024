@@ -37,7 +37,6 @@ void root_dir_init() {
     // Set initial values for root directory
     strcpy(root->path, "/");
     strcpy(root->name, "/");
-    strcpy(root->test, "test");
     strcpy(root->type, "directory");
 
     // Allocate memory for inode and set its properties

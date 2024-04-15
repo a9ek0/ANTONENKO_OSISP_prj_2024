@@ -2,8 +2,8 @@
 
 int find_free_inode() {
     for (int i = 2; i < 100; i++) {
-        if (spblock.inode_bitmap[i] == '0') {
-            spblock.inode_bitmap[i] = '1';
+        if (s_block.inode_bitmap[i] == '0') {
+            s_block.inode_bitmap[i] = '1';
             return i; // Free inode index found, return it
         }
     }

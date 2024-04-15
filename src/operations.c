@@ -1,7 +1,7 @@
 #include "../include/operations.h"
 
 int sfs_mkdir(const char *path, mode_t mode) {
-    printf("MKDIR\n");
+    printf("Creating directory: %s\n", path);
 
     // Find a free inode
     int index = find_free_inode();
@@ -38,7 +38,6 @@ int sfs_mkdir(const char *path, mode_t mode) {
     // Set the folder properties
     new_folder->num_links = 2;
     new_folder->valid = 1;
-    strcpy(new_folder->test, "test");
     strcpy(new_folder->type, "directory");
 
     // Set the inode properties
@@ -61,7 +60,7 @@ int sfs_mkdir(const char *path, mode_t mode) {
 }
 
 int sfs_getattr(const char *path, struct stat *stat) {
-    printf("GETATTR\n");
+    printf("Getting attributes for: %s\n", path);
 
     char *pathname = malloc(strlen(path) + 2);
     strcpy(pathname, path);
@@ -86,7 +85,7 @@ int sfs_getattr(const char *path, struct stat *stat) {
 }
 
 int sfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
-    printf("READDIR\n");
+    printf("Reading directory: %s\n", path);
 
     filler(buffer, ".", NULL, 0);
     filler(buffer, "..", NULL, 0);
@@ -111,7 +110,7 @@ int sfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t of
 }
 
 int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
-    printf("CREATEFILE\n");
+    printf("Creating file: %s\n", path);
 
     int index = find_free_inode();
     if (index == -1) {
@@ -167,6 +166,8 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
 }
 
 int sfs_rmdir(const char *path) {
+    printf("Removing directory: %s\n", path);
+
     char *pathname = malloc(strlen(path) + 2);
     strcpy(pathname, path);
 
@@ -208,6 +209,8 @@ int sfs_rmdir(const char *path) {
 }
 
 int sfs_rm(const char *path) {
+    printf("Removing file: %s\n", path);
+
     char *pathname = malloc(strlen(path) + 2);
     strcpy(pathname, path);
 
@@ -249,7 +252,7 @@ int sfs_rm(const char *path) {
 }
 
 int sfs_open(const char *path, struct fuse_file_info *fi) {
-    printf("OPEN\n");
+    printf("Opening file: %s\n", path);
 
     char *pathname = malloc(strlen(path) + 1);
     strcpy(pathname, path);
@@ -263,7 +266,7 @@ int sfs_open(const char *path, struct fuse_file_info *fi) {
 }
 
 int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-    printf("READ\n");
+    printf("Reading file: %s\n", path);
 
     char *pathname = malloc(strlen(path) + 1);
     strcpy(pathname, path);
@@ -279,10 +282,10 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 
         int i;
         for (i = 0; i < (file->inum->blocks) - 1; i++) {
-            strncat(str, &spblock.datablocks[block_size * (file->inum->datablocks[i])], 1024);
+            strncat(str, &s_block.datablocks[block_size * (file->inum->datablocks[i])], 1024);
             printf("--> %s", str);
         }
-        strncat(str, &spblock.datablocks[block_size * (file->inum->datablocks[i])], (file->inum->size) % 1024);
+        strncat(str, &s_block.datablocks[block_size * (file->inum->datablocks[i])], (file->inum->size) % 1024);
         printf("--> %s", str);
 
         strncpy(buf, str + offset, size);
@@ -293,7 +296,7 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 }
 
 int sfs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-    printf("WRITING\n");
+    printf("Writing to file: %s\n", path);
 
     char *pathname = malloc(strlen(path) + 1);
     strcpy(pathname, path);
@@ -306,7 +309,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
     int indexno = file->inum->blocks - 1;
 
     if (file->inum->size == 0) {
-        strcpy(&spblock.datablocks[block_size * (file->inum->datablocks[0])], buf);
+        strcpy(&s_block.datablocks[block_size * (file->inum->datablocks[0])], buf);
         file->inum->size = strlen(buf);
         file->inum->blocks++;
     } else {
@@ -314,17 +317,17 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
         int len1 = 1024 - (file->inum->size % 1024);
 
         if (len1 >= strlen(buf)) {
-            strcat(&spblock.datablocks[block_size * (file->inum->datablocks[currblk])], buf);
+            strcat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], buf);
             file->inum->size += strlen(buf);
-            printf("---> %s\n", &spblock.datablocks[block_size * (file->inum->datablocks[currblk])]);
+            printf("---> %s\n", &s_block.datablocks[block_size * (file->inum->datablocks[currblk])]);
         } else {
             char *cpystr = malloc(1024 * sizeof(char));
             strncpy(cpystr, buf, len1 - 1);
-            strcat(&spblock.datablocks[block_size * (file->inum->datablocks[currblk])], cpystr);
+            strcat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], cpystr);
             strcpy(cpystr, buf);
-            strcpy(&spblock.datablocks[block_size * (file->inum->datablocks[currblk + 1])], (cpystr + len1 - 1));
+            strcpy(&s_block.datablocks[block_size * (file->inum->datablocks[currblk + 1])], (cpystr + len1 - 1));
             file->inum->size += strlen(buf);
-            printf("---> %s\n", &spblock.datablocks[block_size * (file->inum->datablocks[currblk])]);
+            printf("---> %s\n", &s_block.datablocks[block_size * (file->inum->datablocks[currblk])]);
             file->inum->blocks++;
         }
     }
@@ -335,8 +338,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
 }
 
 int sfs_rename(const char* from, const char* to) {
-    printf("RENAME: %s\n", from);
-    printf("RENAME: %s\n", to);
+    printf("Renaming file/directory: %s to %s\n", from, to);
 
     char *pathname = malloc(strlen(from) + 2);
     strcpy(pathname, from);
