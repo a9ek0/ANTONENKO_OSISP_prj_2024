@@ -20,6 +20,7 @@ typedef struct inode {
 } inode;
 
 int find_free_inode();
+
 void add_child(filetype *parent, filetype *child);
 
 #endif // ANTONENKO_OSISP_PRJ_2024_INODE_H

@@ -7,40 +7,72 @@ filetype file_array[31];
 int save_contents() {
     // Allocate space for the queue to store filetypes
     filetype *queue = malloc(sizeof(filetype) * 60);
-    int front = 0;
-    int rear = 0;
+    if (!queue) {
+        perror("Failed to allocate memory for queue");
+        return -1; // Return an error code if memory allocation fails
+    }
+
     queue[0] = *root;
-    int index = 0;
-    tree_to_array(queue, &front, &rear, &index);
+    int front = 0, rear = 0, index = 0;
+    tree_to_array(queue, &front, &rear, &index); // Assuming this function populates the queue
 
     // Open file for storing file structure
     FILE *file_structure = fopen("file_structure.bin", "wb");
+    if (!file_structure) {
+        perror("Failed to open file_structure.bin for writing");
+        free(queue); // Free allocated memory before returning
+        return -1; // Return an error code if file opening fails
+    }
+
     // Open file for storing superblock
     FILE *superblock_file = fopen("super.bin", "wb");
+    if (!superblock_file) {
+        perror("Failed to open super.bin for writing");
+        fclose(file_structure); // Close already opened file before returning
+        free(queue); // Free allocated memory before returning
+        return -1; // Return an error code if file opening fails
+    }
 
     // Write array of filetypes to file_structure
-    fwrite(file_array, sizeof(filetype) * 31, 1, file_structure);
+    if (fwrite(file_array, sizeof(filetype) * 31, 1, file_structure) != 1) {
+        perror("Failed to write to file_structure.bin");
+        // Handle fwrite failure, but continue to attempt to write other data and close files
+    }
+
     // Write superblock structure to superblock_file
-    fwrite(&spblock, sizeof(superblock), 1, superblock_file);
+    if (fwrite(&spblock, sizeof(superblock), 1, superblock_file) != 1) {
+        perror("Failed to write to super.bin");
+        // Handle fwrite failure, but continue to attempt to close files
+    }
 
     fclose(file_structure);
     fclose(superblock_file);
-
     free(queue);
-    return 0;
+    return 0; // Return 0 to indicate success
 }
 
 void root_dir_init() {
     spblock.inode_bitmap[1] = 1; // Mark inode 1 as used
+
     root = malloc(sizeof(filetype));
+    if (!root) {
+        perror("Failed to allocate memory for root");
+        return; // Early return if memory allocation fails
+    }
 
     // Set initial values for root directory
     strcpy(root->path, "/");
     strcpy(root->name, "/");
     strcpy(root->type, "directory");
 
-    // Allocate memory for inode and set its properties
     root->inum = malloc(sizeof(inode));
+    if (!root->inum) {
+        perror("Failed to allocate memory for inode");
+        free(root); // Free previously allocated memory
+        return; // Early return if memory allocation fails
+    }
+
+    // Set inode properties
     root->inum->permissions = S_IFDIR | 0777;
     time_t currentTime = time(NULL);
     root->inum->c_time = currentTime;
@@ -58,9 +90,17 @@ void root_dir_init() {
 
     // Find a free inode index and assign it to root
     int index = find_free_inode();
+    if (index == -1) {
+        perror("Failed to find a free inode");
+        free(root->inum); // Free previously allocated memory
+        free(root); // Free root memory
+        return; // Early return if no free inode is found
+    }
     root->inum->number = index;
     root->inum->blocks = 0;
 
-    // Save the contents to disk
-    save_contents();
+    // Attempt to save the contents to disk
+    if (save_contents() != 0) {
+        perror("Failed to save contents");
+    }
 }

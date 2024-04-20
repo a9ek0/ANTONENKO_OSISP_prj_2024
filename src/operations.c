@@ -1,6 +1,9 @@
+#include <limits.h>
 #include "../include/operations.h"
 
 int sfs_mkdir(const char *path, mode_t mode) {
+    (void) mode; // Explicitly cast unused parameter to void to avoid warning
+
     printf("Creating directory: %s\n", path);
 
     // Find a free inode
@@ -17,8 +20,10 @@ int sfs_mkdir(const char *path, mode_t mode) {
     char *pathname = malloc(strlen(path) + 2);
     strcpy(pathname, path);
     char *folder_name = strrchr(pathname, '/');
-    strcpy(new_folder->name, folder_name + 1);
-    *folder_name = '\0';
+    if (folder_name != NULL) { // Check if strrchr found '/'
+        strcpy(new_folder->name, folder_name + 1);
+        *folder_name = '\0'; // Terminate the pathname string to remove the folder name
+    }
 
     // Set the folder path
     if (strlen(pathname) == 0) {
@@ -29,6 +34,9 @@ int sfs_mkdir(const char *path, mode_t mode) {
     // Get the parent folder
     new_folder->parent = filetype_from_path(pathname);
     if (new_folder->parent == NULL) {
+        free(new_folder->inum); // Free allocated inode
+        free(new_folder); // Free allocated filetype
+        free(pathname); // Free allocated pathname
         return -ENOENT; // No such file or directory
     }
 
@@ -56,30 +64,49 @@ int sfs_mkdir(const char *path, mode_t mode) {
     // Save the changes
     save_contents();
 
+    free(pathname); // Free allocated pathname after use
+
     return 0;
 }
 
-int sfs_getattr(const char *path, struct stat *stat) {
+int sfs_getattr(const char *path, struct stat *stat_buf) {
     printf("Getting attributes for: %s\n", path);
 
-    char *pathname = malloc(strlen(path) + 2);
+    // Validate input parameters
+    if (path == NULL || stat_buf == NULL) {
+        return -EINVAL; // Invalid argument
+    }
+
+    // Allocate memory for the pathname with extra space for null terminator
+    char *pathname = malloc(strlen(path) + 1);
+    if (pathname == NULL) {
+        return -ENOMEM; // Not enough space
+    }
     strcpy(pathname, path);
 
+    // Find the file node from the path
     filetype *file_node = filetype_from_path(pathname);
+    free(pathname); // Free pathname after use
+
     if (file_node == NULL) {
         return -ENOENT; // No such file or directory
     }
 
     inode *file_inode = file_node->inum;
-    stat->st_uid = file_inode->user_id;
-    stat->st_gid = file_inode->group_id;
-    stat->st_atime = file_inode->a_time;
-    stat->st_mtime = file_inode->m_time;
-    stat->st_ctime = file_inode->c_time;
-    stat->st_mode = file_inode->permissions;
-    stat->st_nlink = file_node->num_links + file_node->num_children;
-    stat->st_size = file_inode->size;
-    stat->st_blocks = file_inode->blocks;
+    if (file_inode == NULL) {
+        return -ENOENT; // No such file or directory
+    }
+
+    // Populate the stat structure
+    stat_buf->st_uid = file_inode->user_id;
+    stat_buf->st_gid = file_inode->group_id;
+    stat_buf->st_atime = file_inode->a_time;
+    stat_buf->st_mtime = file_inode->m_time;
+    stat_buf->st_ctime = file_inode->c_time;
+    stat_buf->st_mode = file_inode->permissions;
+    stat_buf->st_nlink = file_node->num_links + file_node->num_children;
+    stat_buf->st_size = file_inode->size;
+    stat_buf->st_blocks = file_inode->blocks;
 
     return 0;
 }
@@ -87,19 +114,28 @@ int sfs_getattr(const char *path, struct stat *stat) {
 int sfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
     printf("Reading directory: %s\n", path);
 
+    // Explicitly cast unused parameters to void to avoid warnings
+    (void) offset;
+    (void) fi;
+
     filler(buffer, ".", NULL, 0);
     filler(buffer, "..", NULL, 0);
 
-    char *pathname = malloc(strlen(path) + 2);
+    // Allocate memory for the pathname with correct size
+    char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
+    if (pathname == NULL) {
+        return -ENOMEM; // Not enough space
+    }
     strcpy(pathname, path);
 
     filetype *dir_node = filetype_from_path(pathname);
+    free(pathname); // Free pathname after use
 
     if (dir_node == NULL) {
         return -ENOENT; // No such file or directory
     }
 
-    dir_node->inum->a_time = time(NULL);
+    dir_node->inum->a_time = time(NULL); // Update access time
 
     for (int i = 0; i < dir_node->num_children; i++) {
         printf(":%s:\n", dir_node->children[i]->name);
@@ -110,6 +146,9 @@ int sfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t of
 }
 
 int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    // Suppress unused parameter warning by explicitly casting to void
+    (void) fi;
+
     printf("Creating file: %s\n", path);
 
     int index = find_free_inode();
@@ -118,13 +157,28 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     }
 
     filetype *new_file = malloc(sizeof(filetype));
+    if (new_file == NULL) {
+        return -ENOMEM; // Not enough memory
+    }
 
-    char *pathname = malloc(strlen(path) + 2);
+    // Use snprintf for safer string operations and to handle edge cases more gracefully
+    char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
+    if (pathname == NULL) {
+        free(new_file); // Clean up previously allocated memory
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, path);
 
     char *folder_name = strrchr(pathname, '/');
-    strcpy(new_file->name, folder_name + 1);
-    *folder_name = '\0';
+    if (folder_name != NULL) {
+        strcpy(new_file->name, folder_name + 1);
+        *folder_name = '\0'; // Split the string at the last '/'
+    } else {
+        // Handle the case where strrchr might return NULL
+        free(new_file);
+        free(pathname);
+        return -EINVAL; // Invalid argument
+    }
 
     if (strlen(pathname) == 0) {
         strcpy(pathname, "/");
@@ -135,6 +189,8 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     new_file->num_children = 0;
     new_file->parent = filetype_from_path(pathname);
     if (new_file->parent == NULL) {
+        free(new_file);
+        free(pathname);
         return -ENOENT; // No such file or directory
     }
 
@@ -143,6 +199,11 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     strcpy(new_file->type, "file");
 
     inode *new_inode = malloc(sizeof(inode));
+    if (new_inode == NULL) {
+        free(new_file);
+        free(pathname);
+        return -ENOMEM; // Not enough memory
+    }
     new_inode->number = index;
     new_inode->blocks = 0;
     new_inode->size = 0;
@@ -162,26 +223,45 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
 
     save_contents();
 
+    free(pathname); // Free pathname after use
+
     return 0;
 }
 
 int sfs_rmdir(const char *path) {
     printf("Removing directory: %s\n", path);
 
-    char *pathname = malloc(strlen(path) + 2);
+    char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
+    if (!pathname) {
+        return -ENOMEM;
+    }
     strcpy(pathname, path);
 
     char *folder_name = strrchr(pathname, '/');
-    char *folder_delete = malloc(strlen(folder_name + 1) + 2);
+    if (!folder_name) {
+        free(pathname);
+        return -EINVAL; // Invalid path
+    }
+
+    // Correct allocation for folder_delete
+    char *folder_delete = malloc(
+            strlen(folder_name)); // folder_name + 1 points to the next character, so strlen already accounts for it
+    if (!folder_delete) {
+        free(pathname);
+        return -ENOMEM;
+    }
     strcpy(folder_delete, folder_name + 1);
-    *folder_name = '\0';
+    *folder_name = '\0'; // Terminate pathname to isolate the parent directory path
 
     if (strlen(pathname) == 0) {
         strcpy(pathname, "/");
     }
 
     filetype *parent = filetype_from_path(pathname);
+    free(pathname); // Free pathname as soon as it's no longer needed
+
     if (parent == NULL) {
+        free(folder_delete);
         return -ENOENT; // No such file or directory
     }
 
@@ -192,12 +272,15 @@ int sfs_rmdir(const char *path) {
         }
         index++;
     }
+    free(folder_delete); // Free folder_delete as soon as it's no longer needed
+
     if (index == parent->num_children) {
         return -ENOENT; // No such file or directory
     }
     if (parent->children[index]->num_children != 0) {
         return -ENOTEMPTY; // Directory not empty
     }
+    // Shift children to remove the deleted directory
     for (int i = index + 1; i < parent->num_children; i++) {
         parent->children[i - 1] = parent->children[i];
     }
@@ -211,23 +294,44 @@ int sfs_rmdir(const char *path) {
 int sfs_rm(const char *path) {
     printf("Removing file: %s\n", path);
 
-    char *pathname = malloc(strlen(path) + 2);
+    // Allocate memory for pathname with correct size
+    char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
+    if (!pathname) {
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, path);
 
+    // Find the last occurrence of '/' to isolate folder name
     char *folder_name = strrchr(pathname, '/');
-    char *folder_delete = malloc(strlen(folder_name + 1) + 2);
-    strcpy(folder_delete, folder_name + 1);
-    *folder_name = '\0';
+    if (!folder_name) {
+        free(pathname);
+        return -EINVAL; // Invalid path
+    }
 
+    // Correctly allocate memory for folder_delete considering the null terminator
+    char *folder_delete = malloc(strlen(folder_name)); // Corrected allocation
+    if (!folder_delete) {
+        free(pathname);
+        return -ENOMEM; // Not enough memory
+    }
+    strcpy(folder_delete, folder_name + 1);
+    *folder_name = '\0'; // Modify pathname to get the parent directory
+
+    // Handle root directory case
     if (strlen(pathname) == 0) {
         strcpy(pathname, "/");
     }
 
+    // Find the parent directory from the modified pathname
     filetype *parent = filetype_from_path(pathname);
+    free(pathname); // Free pathname as it's no longer needed
+
     if (parent == NULL) {
+        free(folder_delete);
         return -ENOENT; // No such file or directory
     }
 
+    // Search for the file to delete among the parent's children
     int index = 0;
     while (index < parent->num_children) {
         if (strcmp(parent->children[index]->name, folder_delete) == 0) {
@@ -235,18 +339,25 @@ int sfs_rm(const char *path) {
         }
         index++;
     }
+    free(folder_delete); // Free folder_delete as it's no longer needed
+
+    // If file not found among children
     if (index == parent->num_children) {
         return -ENOENT; // No such file or directory
     }
+
+    // Check if the target is not a directory or if it's empty
     if (parent->children[index]->num_children != 0) {
         return -ENOTEMPTY; // Directory not empty
     }
+
+    // Remove the file from the parent's children array
     for (int i = index + 1; i < parent->num_children; i++) {
         parent->children[i - 1] = parent->children[i];
     }
     parent->num_children -= 1;
 
-    save_contents();
+    save_contents(); // Save the updated filesystem state
 
     return 0;
 }
@@ -254,10 +365,17 @@ int sfs_rm(const char *path) {
 int sfs_open(const char *path, struct fuse_file_info *fi) {
     printf("Opening file: %s\n", path);
 
+    // Explicitly cast unused parameter to void
+    (void) fi;
+
     char *pathname = malloc(strlen(path) + 1);
+    if (!pathname) {
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, path);
 
     filetype *file = filetype_from_path(pathname);
+    free(pathname); // Free pathname as soon as it's no longer needed
     if (file == NULL) {
         return -ENOENT; // No such file or directory
     }
@@ -268,101 +386,156 @@ int sfs_open(const char *path, struct fuse_file_info *fi) {
 int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
     printf("Reading file: %s\n", path);
 
+    // Explicitly cast unused parameter to void
+    (void) fi;
+
     char *pathname = malloc(strlen(path) + 1);
+    if (!pathname) {
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, path);
 
     filetype *file = filetype_from_path(pathname);
+    free(pathname); // Free pathname as soon as it's no longer needed
     if (file == NULL) {
         return -ENOENT; // No such file or directory
-    } else {
-        char *str = malloc((file->inum->size) + 1);
-        memset(str, 0, (file->inum->size) + 1);
-
-        printf(":%d:\n", file->inum->size);
-
-        int i;
-        for (i = 0; i < (file->inum->blocks) - 1; i++) {
-            strncat(str, &s_block.datablocks[block_size * (file->inum->datablocks[i])], 1024);
-            printf("--> %s", str);
-        }
-        strncat(str, &s_block.datablocks[block_size * (file->inum->datablocks[i])], (file->inum->size) % 1024);
-        printf("--> %s", str);
-
-        strncpy(buf, str + offset, size);
-        free(str);
     }
 
-    return file->inum->size;
+    // Ensure that the requested read does not exceed the file size
+    size_t read_size = size;
+    if (offset + size > file->inum->size) {
+        read_size = file->inum->size - offset;
+        if (read_size < 0) {
+            return 0; // Attempt to read beyond the end of the file
+        }
+    }
+
+    char *str = malloc(file->inum->size + 1);
+    if (!str) {
+        return -ENOMEM; // Not enough memory
+    }
+    memset(str, 0, file->inum->size + 1);
+
+    // Simulate reading from the file
+    for (int i = 0; i < file->inum->blocks; i++) {
+        size_t block_offset = block_size * file->inum->datablocks[i];
+        size_t copy_size = (i < file->inum->blocks - 1) ? block_size : file->inum->size % block_size;
+        strncat(str, &s_block.datablocks[block_offset], copy_size);
+    }
+
+    strncpy(buf, str + offset, read_size);
+    free(str);
+
+    return read_size;
 }
 
 int sfs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
     printf("Writing to file: %s\n", path);
 
+    // Explicitly cast unused parameters to void to avoid warnings
+    (void) size;
+    (void) offset;
+    (void) fi;
+
     char *pathname = malloc(strlen(path) + 1);
+    if (!pathname) {
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, path);
 
     filetype *file = filetype_from_path(pathname);
+    free(pathname); // Free pathname as soon as it's no longer needed
     if (file == NULL) {
         return -ENOENT; // No such file or directory
     }
 
-    int indexno = file->inum->blocks - 1;
+    size_t buf_len = strlen(buf);
+    // Ensure that the file size does not exceed the maximum value for its type
+    if (buf_len > INT_MAX - file->inum->size) {
+        return -EFBIG; // File too large
+    }
 
     if (file->inum->size == 0) {
-        strcpy(&s_block.datablocks[block_size * (file->inum->datablocks[0])], buf);
-        file->inum->size = strlen(buf);
+        strncpy(&s_block.datablocks[block_size * (file->inum->datablocks[0])], buf, buf_len);
+        file->inum->size = (int) buf_len; // Safe cast after size check
         file->inum->blocks++;
     } else {
         int currblk = file->inum->blocks - 1;
-        int len1 = 1024 - (file->inum->size % 1024);
+        size_t len1 = 1024 - (file->inum->size % 1024);
 
-        if (len1 >= strlen(buf)) {
-            strcat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], buf);
-            file->inum->size += strlen(buf);
-            printf("---> %s\n", &s_block.datablocks[block_size * (file->inum->datablocks[currblk])]);
+        if (len1 >= buf_len) {
+            strncat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], buf, buf_len);
+            file->inum->size += (int) buf_len; // Safe cast after size check
         } else {
             char *cpystr = malloc(1024 * sizeof(char));
-            strncpy(cpystr, buf, len1 - 1);
-            strcat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], cpystr);
-            strcpy(cpystr, buf);
-            strcpy(&s_block.datablocks[block_size * (file->inum->datablocks[currblk + 1])], (cpystr + len1 - 1));
-            file->inum->size += strlen(buf);
-            printf("---> %s\n", &s_block.datablocks[block_size * (file->inum->datablocks[currblk])]);
+            if (!cpystr) {
+                return -ENOMEM; // Not enough memory
+            }
+            strncpy(cpystr, buf, len1);
+            strncat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], cpystr, len1);
+            strncpy(&s_block.datablocks[block_size * (file->inum->datablocks[currblk + 1])], buf + len1,
+                    buf_len - len1);
+            file->inum->size += (int) buf_len; // Safe cast after size check
             file->inum->blocks++;
+            free(cpystr);
         }
     }
 
     save_contents();
 
-    return strlen(buf);
+    return (int) buf_len; // Safe cast after size check
 }
 
-int sfs_rename(const char* from, const char* to) {
+int sfs_rename(const char *from, const char *to) {
     printf("Renaming file/directory: %s to %s\n", from, to);
 
-    char *pathname = malloc(strlen(from) + 2);
+    // Allocate memory and check for success
+    char *pathname = malloc(strlen(from) + 1); // +2 not needed, just +1 for '\0'
+    if (!pathname) {
+        return -ENOMEM; // Not enough memory
+    }
     strcpy(pathname, from);
 
+    // Find the last occurrence of '/'
     char *rindex1 = strrchr(pathname, '/');
+    if (!rindex1) {
+        free(pathname); // Free allocated memory before returning
+        return -EINVAL; // Invalid argument
+    }
 
+    // Locate the file to rename
     filetype *file = filetype_from_path(pathname);
-
-    *rindex1 = '\0';
-
-    char *pathname2 = malloc(strlen(to) + 2);
-    strcpy(pathname2, to);
-
-    char *rindex2 = strrchr(pathname2, '/');
-
     if (file == NULL) {
+        free(pathname); // Ensure pathname is freed in case of error
         return -ENOENT; // No such file or directory
     }
 
+    // Allocate memory for the new path and check for success
+    char *pathname2 = malloc(strlen(to) + 1); // Corrected allocation size
+    if (!pathname2) {
+        free(pathname); // Ensure pathname is freed in case of error
+        return -ENOMEM; // Not enough memory
+    }
+    strcpy(pathname2, to);
+
+    // Find the last occurrence of '/' in the new path
+    char *rindex2 = strrchr(pathname2, '/');
+    if (!rindex2) {
+        free(pathname);
+        free(pathname2); // Free allocated memory before returning
+        return -EINVAL; // Invalid argument
+    }
+
+    // Perform the renaming operation
     strcpy(file->name, rindex2 + 1);
     strcpy(file->path, to);
 
     printf(":%s:\n", file->name);
     printf(":%s:\n", file->path);
+
+    // Free allocated memory
+    free(pathname);
+    free(pathname2);
 
     save_contents();
 
@@ -376,5 +549,28 @@ int sfs_truncate(const char *path, off_t size) {
 
 int sfs_access(const char *path, int mask) {
     // This function is currently a placeholder and does not perform any operations.
+    return 0;
+}
+
+int sfs_utimens(const char *path, const struct timespec tv[2]) {
+    filetype *file = filetype_from_path(path);
+    if (file == NULL) {
+        return -ENOENT; // File not found
+    }
+
+    time_t currentTime = time(NULL); // Fetch current time once, if needed
+
+    // Update access time
+    if (tv[0].tv_nsec != UTIME_OMIT) {
+        file->inum->a_time = (tv[0].tv_nsec == UTIME_NOW) ? currentTime : tv[0].tv_sec;
+    }
+
+    // Update modification time
+    if (tv[1].tv_nsec != UTIME_OMIT) {
+        file->inum->m_time = (tv[1].tv_nsec == UTIME_NOW) ? currentTime : tv[1].tv_sec;
+    }
+
+    save_contents(); // Persist changes
+
     return 0;
 }

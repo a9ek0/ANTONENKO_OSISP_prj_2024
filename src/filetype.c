@@ -1,58 +1,45 @@
 #include "../include/filetype.h"
 
 filetype *filetype_from_path(const char *path) {
-    char curr_folder[100];
-    char *path_name = malloc(strlen(path) + 2);
-    strcpy(path_name, path);
+    if (path == NULL) {
+        printf("NULL path provided.\n");
+        return NULL; // Handle null pointer to avoid undefined behavior.
+    }
 
-    filetype *curr_node = root;
+    if (path[0] != '/' || strcmp(path, "/") == 0) {
+        return root; // Simplify the check for root path.
+    }
 
-    if (strcmp(path_name, "/") == 0)
-        return curr_node;
-
-    if (path_name[0] != '/') {
-        printf("INCORRECT PATH\n");
-        exit(1);
-    } else {
-        path_name++;
+    char *path_name = strdup(path); // Use strdup to simplify memory allocation and copying.
+    if (!path_name) {
+        perror("Memory allocation failed for path_name");
+        return NULL; // Check strdup failure.
     }
 
     if (path_name[strlen(path_name) - 1] == '/') {
-        path_name[strlen(path_name) - 1] = '\0';
+        path_name[strlen(path_name) - 1] = '\0'; // Remove trailing slash if present.
     }
 
-    char *index;
-    int flag;
+    filetype *curr_node = root;
+    char *token = strtok(path_name + 1, "/"); // Skip the leading '/' and tokenize.
 
-    while (strlen(path_name) != 0) {
-        index = strchr(path_name, '/');
-
-        if (index != NULL) {
-            strncpy(curr_folder, path_name, index - path_name);
-            curr_folder[index - path_name] = '\0';
-
-            flag = 0;
-            for (int i = 0; i < curr_node->num_children; i++) {
-                if (strcmp(curr_node->children[i]->name, curr_folder) == 0) {
-                    curr_node = curr_node->children[i];
-                    flag = 1;
-                    break;
-                }
+    while (token != NULL) {
+        int found = 0;
+        for (int i = 0; i < curr_node->num_children && !found; i++) {
+            if (strcmp(curr_node->children[i]->name, token) == 0) {
+                curr_node = curr_node->children[i];
+                found = 1; // Use a boolean flag to indicate if the child was found.
             }
-            if (flag == 0)
-                return NULL;
-        } else {
-            strcpy(curr_folder, path_name);
-            for (int i = 0; i < curr_node->num_children; i++) {
-                if (strcmp(curr_node->children[i]->name, curr_folder) == 0) {
-                    curr_node = curr_node->children[i];
-                    return curr_node;
-                }
-            }
-            return NULL;
         }
-        path_name = index + 1;
+
+        if (!found) {
+            free(path_name);
+            return NULL; // Child not found.
+        }
+
+        token = strtok(NULL, "/"); // Get the next token.
     }
 
+    free(path_name);
     return curr_node;
 }

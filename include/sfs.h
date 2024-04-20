@@ -8,6 +8,7 @@
 #include "utilities.h"
 
 void root_dir_init();
+
 int save_contents();
 
 #endif /* SFS_H */

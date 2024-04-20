@@ -1,8 +1,11 @@
 #include "../include/superblock.h"
+
 superblock s_block;
 
 void superblock_init() {
+    // Initialize all data block bits to '0' indicating they are free
     memset(s_block.data_bitmap, '0', sizeof(s_block.data_bitmap));
+    // Initialize all inode bits to '0' indicating they are free
     memset(s_block.inode_bitmap, '0', sizeof(s_block.inode_bitmap));
 }
 

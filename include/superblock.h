@@ -14,6 +14,7 @@ typedef struct superblock {
 extern superblock s_block;
 
 void superblock_init();
+
 int find_free_db();
 
 #endif //ANTONENKO_OSISP_PRJ_2024_SUPERBLOCK_H
