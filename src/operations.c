@@ -34,10 +34,10 @@ int sfs_mkdir(const char *path, mode_t mode) {
     // Get the parent folder
     new_folder->parent = filetype_from_path(pathname);
     if (new_folder->parent == NULL) {
-        free(new_folder->inum); // Free allocated inode
-        free(new_folder); // Free allocated filetype
-        free(pathname); // Free allocated pathname
-        return -ENOENT; // No such file or directory
+        free(new_folder->inum);
+        free(new_folder);
+        free(pathname);
+        return -ENOENT;
     }
 
     // Add the new folder as a child of the parent folder
@@ -61,7 +61,6 @@ int sfs_mkdir(const char *path, mode_t mode) {
     new_inode->number = index;
     new_inode->blocks = 0;
 
-    // Save the changes
     save_contents();
 
     free(pathname); // Free allocated pathname after use
@@ -97,7 +96,6 @@ int sfs_getattr(const char *path, struct stat *stat_buf) {
         return -ENOENT; // No such file or directory
     }
 
-    // Populate the stat structure
     stat_buf->st_uid = file_inode->user_id;
     stat_buf->st_gid = file_inode->group_id;
     stat_buf->st_atime = file_inode->a_time;
@@ -122,7 +120,7 @@ int sfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t of
     filler(buffer, "..", NULL, 0);
 
     // Allocate memory for the pathname with correct size
-    char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
+    char *pathname = malloc(strlen(path) + 1);
     if (pathname == NULL) {
         return -ENOMEM; // Not enough space
     }
@@ -161,7 +159,6 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
         return -ENOMEM; // Not enough memory
     }
 
-    // Use snprintf for safer string operations and to handle edge cases more gracefully
     char *pathname = malloc(strlen(path) + 1); // +1 for null terminator
     if (pathname == NULL) {
         free(new_file); // Clean up previously allocated memory
@@ -490,7 +487,7 @@ int sfs_rename(const char *from, const char *to) {
     printf("Renaming file/directory: %s to %s\n", from, to);
 
     // Allocate memory and check for success
-    char *pathname = malloc(strlen(from) + 1); // +2 not needed, just +1 for '\0'
+    char *pathname = malloc(strlen(from) + 1);
     if (!pathname) {
         return -ENOMEM; // Not enough memory
     }

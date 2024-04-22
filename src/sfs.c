@@ -20,29 +20,27 @@ int save_contents() {
     FILE *file_structure = fopen("file_structure.bin", "wb");
     if (!file_structure) {
         perror("Failed to open file_structure.bin for writing");
-        free(queue); // Free allocated memory before returning
-        return -1; // Return an error code if file opening fails
+        free(queue);
+        return -1;
     }
 
     // Open file for storing superblock
     FILE *superblock_file = fopen("super.bin", "wb");
     if (!superblock_file) {
         perror("Failed to open super.bin for writing");
-        fclose(file_structure); // Close already opened file before returning
-        free(queue); // Free allocated memory before returning
-        return -1; // Return an error code if file opening fails
+        fclose(file_structure);
+        free(queue);
+        return -1;
     }
 
     // Write array of filetypes to file_structure
     if (fwrite(file_array, sizeof(filetype) * 31, 1, file_structure) != 1) {
         perror("Failed to write to file_structure.bin");
-        // Handle fwrite failure, but continue to attempt to write other data and close files
     }
 
     // Write superblock structure to superblock_file
     if (fwrite(&spblock, sizeof(superblock), 1, superblock_file) != 1) {
         perror("Failed to write to super.bin");
-        // Handle fwrite failure, but continue to attempt to close files
     }
 
     fclose(file_structure);
@@ -68,7 +66,7 @@ void root_dir_init() {
     root->inum = malloc(sizeof(inode));
     if (!root->inum) {
         perror("Failed to allocate memory for inode");
-        free(root); // Free previously allocated memory
+        free(root);
         return; // Early return if memory allocation fails
     }
 
@@ -92,9 +90,9 @@ void root_dir_init() {
     int index = find_free_inode();
     if (index == -1) {
         perror("Failed to find a free inode");
-        free(root->inum); // Free previously allocated memory
-        free(root); // Free root memory
-        return; // Early return if no free inode is found
+        free(root->inum);
+        free(root);
+        return;
     }
     root->inum->number = index;
     root->inum->blocks = 0;
