@@ -76,7 +76,6 @@ int sfs_getattr(const char *path, struct stat *stat_buf) {
         return -EINVAL; // Invalid argument
     }
 
-    // Allocate memory for the pathname with extra space for null terminator
     char *pathname = malloc(strlen(path) + 1);
     if (pathname == NULL) {
         return -ENOMEM; // Not enough space
@@ -354,7 +353,7 @@ int sfs_rm(const char *path) {
     }
     parent->num_children -= 1;
 
-    save_contents(); // Save the updated filesystem state
+    save_contents();
 
     return 0;
 }
@@ -567,7 +566,7 @@ int sfs_utimens(const char *path, const struct timespec tv[2]) {
         file->inum->m_time = (tv[1].tv_nsec == UTIME_NOW) ? currentTime : tv[1].tv_sec;
     }
 
-    save_contents(); // Persist changes
+    save_contents();
 
     return 0;
 }
