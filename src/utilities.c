@@ -1,6 +1,6 @@
 #include "../include/utilities.h"
 
-void tree_to_array(filetype *queue, int *front, int *rear, int *index) {
+void serialize_array(filetype *queue, int *front, int *rear, int *index) {
 
     if (rear < front)
         return;
@@ -43,6 +43,6 @@ void tree_to_array(filetype *queue, int *front, int *rear, int *index) {
         }
     }
 
-    tree_to_array(queue, front, rear, index);
+    serialize_array(queue, front, rear, index);
 
 }

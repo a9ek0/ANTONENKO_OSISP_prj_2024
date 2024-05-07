@@ -1,4 +1,4 @@
-#include "../include/sfs.h"
+#include "../include/fs_init.h"
 // gcc shell.c -o FS `pkg-config fuse --cflags --libs`
 
 //MAIN FS
@@ -11,7 +11,7 @@
 // sudo fusermount -u /home/alexander/sdCard/mnt/
 
 #include <stdio.h>
-#include "../include/sfs.h"
+#include "../include/fs_init.h"
 
 #define MAX_FILES 31
 
@@ -19,8 +19,7 @@ int main(int argc, char *argv[]) {
 
     FILE *fd = fopen("file_structure.bin", "rb");
     if (fd) {
-        //root_dir_init();
-        printf("LOADING\n");
+        printf("File system restored!\n");
         fread(&file_array, sizeof(filetype) * 31, 1, fd);
 
         inode *inodes = malloc(sizeof(inode) * 31);
@@ -31,6 +30,10 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             file_array[i].inum = NULL;
+        }
+
+        for (int i = 0; i < MAX_FILES; i++) {
+            printf("%s : %s\n", file_array[i].path, file_array[i].name);
         }
 
         int child_startindex = 1;
@@ -52,26 +55,15 @@ int main(int argc, char *argv[]) {
 
         FILE *fd1 = fopen("super.bin", "rb");
 
-        fread(s_block.datablocks, sizeof(s_block.datablocks[0]),
-              sizeof(s_block.datablocks) / sizeof(s_block.datablocks[0]), fd1);
+        fread(&s_block, sizeof(superblock), 1, fd1);
 
-        fread(s_block.data_bitmap, sizeof(s_block.data_bitmap[0]),
-              sizeof(s_block.data_bitmap) / sizeof(s_block.data_bitmap[0]), fd1);
-
-        fread(s_block.inode_bitmap, sizeof(s_block.inode_bitmap[0]),
-              sizeof(s_block.inode_bitmap) / sizeof(s_block.inode_bitmap[0]), fd1);
-        //fread(&s_block, sizeof(superblock), 1, fd1);
-
+        fclose(fd);
+        fclose(fd1);
     } else {
+        printf("New file system!\n");
         superblock_init();
         root_dir_init();
     }
-
-
-    //  printf("file_structure.bin not found. Initializing new file system.\n");
-    //  superblock_init();
-    //  root_dir_init();
-
 
     return fuse_main(argc, argv, &operations, NULL);
 }

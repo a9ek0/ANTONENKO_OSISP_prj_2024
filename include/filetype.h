@@ -1,10 +1,13 @@
 #ifndef ANTONENKO_OSISP_PRJ_2024_FILETYPE_H
 #define ANTONENKO_OSISP_PRJ_2024_FILETYPE_H
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "inode.h"
+#include <../include/stdio.h>
+#include <../include/string.h>
+#include <../include/stdlib.h>
+#include "../include/inode.h"
+#include "../include/fs_init.h"
+
+#define MAX_FILES 31
 
 typedef struct inode inode;
 
@@ -21,7 +24,7 @@ typedef struct filetype {
 } filetype;
 
 extern filetype *root;
-extern filetype file_array[31];
+extern filetype file_array[MAX_FILES];
 
 filetype *filetype_from_path(const char *path);
 

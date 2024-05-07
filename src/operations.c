@@ -61,7 +61,7 @@ int sfs_mkdir(const char *path, mode_t mode) {
     new_inode->number = index;
     new_inode->blocks = 0;
 
-    save_contents();
+    save_system_state();
 
     free(pathname); // Free allocated pathname after use
 
@@ -217,7 +217,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
 
     new_file->inum = new_inode;
 
-    save_contents();
+    save_system_state();
 
     free(pathname); // Free pathname after use
 
@@ -282,7 +282,7 @@ int sfs_rmdir(const char *path) {
     }
     parent->num_children -= 1;
 
-    save_contents();
+    save_system_state();
 
     return 0;
 }
@@ -353,7 +353,7 @@ int sfs_rm(const char *path) {
     }
     parent->num_children -= 1;
 
-    save_contents();
+    save_system_state();
 
     return 0;
 }
@@ -416,7 +416,7 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     for (int i = 0; i < file->inum->blocks; i++) {
         size_t block_offset = block_size * file->inum->datablocks[i];
         size_t copy_size = (i < file->inum->blocks - 1) ? block_size : file->inum->size % block_size;
-        strncat(str, &s_block.datablocks[block_offset], copy_size);
+        strncat(str, &s_block.data_blocks[block_offset], copy_size);
     }
 
     strncpy(buf, str + offset, read_size);
@@ -452,7 +452,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
     }
 
     if (file->inum->size == 0) {
-        strncpy(&s_block.datablocks[block_size * (file->inum->datablocks[0])], buf, buf_len);
+        strncpy(&s_block.data_blocks[block_size * (file->inum->datablocks[0])], buf, buf_len);
         file->inum->size = (int) buf_len; // Safe cast after size check
         file->inum->blocks++;
     } else {
@@ -460,7 +460,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
         size_t len1 = 1024 - (file->inum->size % 1024);
 
         if (len1 >= buf_len) {
-            strncat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], buf, buf_len);
+            strncat(&s_block.data_blocks[block_size * (file->inum->datablocks[currblk])], buf, buf_len);
             file->inum->size += (int) buf_len; // Safe cast after size check
         } else {
             char *cpystr = malloc(1024 * sizeof(char));
@@ -468,8 +468,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
                 return -ENOMEM; // Not enough memory
             }
             strncpy(cpystr, buf, len1);
-            strncat(&s_block.datablocks[block_size * (file->inum->datablocks[currblk])], cpystr, len1);
-            strncpy(&s_block.datablocks[block_size * (file->inum->datablocks[currblk + 1])], buf + len1,
+            strncat(&s_block.data_blocks[block_size * (file->inum->datablocks[currblk])], cpystr, len1);
+            strncpy(&s_block.data_blocks[block_size * (file->inum->datablocks[currblk + 1])], buf + len1,
                     buf_len - len1);
             file->inum->size += (int) buf_len; // Safe cast after size check
             file->inum->blocks++;
@@ -477,7 +477,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
         }
     }
 
-    save_contents();
+    save_system_state();
 
     return (int) buf_len; // Safe cast after size check
 }
@@ -533,7 +533,7 @@ int sfs_rename(const char *from, const char *to) {
     free(pathname);
     free(pathname2);
 
-    save_contents();
+    save_system_state();
 
     return 0;
 }
@@ -566,7 +566,7 @@ int sfs_utimens(const char *path, const struct timespec tv[2]) {
         file->inum->m_time = (tv[1].tv_nsec == UTIME_NOW) ? currentTime : tv[1].tv_sec;
     }
 
-    save_contents();
+    save_system_state();
 
     return 0;
 }

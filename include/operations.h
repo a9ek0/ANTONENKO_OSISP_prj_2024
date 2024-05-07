@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include "fuse.h"
-#include "sfs.h"
+#include "fs_init.h"
 
 int sfs_mkdir(const char *path, mode_t mode);
 
