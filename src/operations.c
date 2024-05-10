@@ -104,7 +104,6 @@ int sfs_getattr(const char *path, struct stat *stat_buf) {
     stat_buf->st_nlink = file_node->num_links + file_node->num_children;
     stat_buf->st_size = file_inode->size;
     stat_buf->st_blocks = file_inode->blocks;
-
     return 0;
 }
 
@@ -216,6 +215,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     }
 
     new_file->inum = new_inode;
+    new_file->valid = 1;
 
     save_system_state();
 

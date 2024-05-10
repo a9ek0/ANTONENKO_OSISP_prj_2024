@@ -13,4 +13,6 @@ void root_dir_init();
 
 int save_system_state();
 
+void restore_file_system();
+
 #endif /* SFS_H */

@@ -53,40 +53,11 @@ void root_dir_init() {
     root->inum->number = index;
     root->inum->blocks = 0;
 
-    // Attempt to save the contents to disk
     save_system_state();
 }
 
-int save_system_state() {
-    filetype *queue = malloc(sizeof(filetype) * 60);
-    int front = 0;
-    int rear = 0;
-    queue[0] = *root;
-    int index = 0;
-    serialize_array(queue, &front, &rear, &index);
-
-    FILE *fd = fopen("file_structure.bin", "wb");
-
-    FILE *fd1 = fopen("super.bin", "wb");
-
-   /* for (int i = 0; i < MAX_FILES; i++) {
-        printf("%s\n", file_array[i].name);
-    }*/
-
-    fwrite(file_array, sizeof(filetype) * 31, 1, fd);
-
-    for (int i = 0; i < MAX_FILES; i++) {
-        if (file_array[i].valid) {
-            fwrite(file_array[i].inum, sizeof(inode), 1, fd);
-        } else {
-            inode empty_inode = {0};
-            empty_inode.c_time = -1;
-            fwrite(&empty_inode, sizeof(inode), 1, fd);
-        }
-    }
-
-
-    /*printf("Data blocks:\n");
+void print_superblock_details() {
+    printf("Data blocks:\n");
     for (int i = 0; i < sizeof(s_block.data_blocks); i++) {
         printf("%c.", s_block.data_blocks[i]);
     }
@@ -102,12 +73,54 @@ int save_system_state() {
     for (int i = 0; i < sizeof(s_block.inode_bitmap); i++) {
         printf("%c.", s_block.inode_bitmap[i]);
     }
-    printf("\n");*/
+    printf("\n");
+}
 
-   fwrite(&s_block, sizeof(superblock), 1, fd1);
+int save_system_state() {
+    FILE *fd = fopen("file_structure.bin", "wb");
+    if (!fd) {
+        perror("Failed to open file_structure.bin for writing");
+        return -1;
+    }
+
+    serialize_filetype_to_file(root, fd);
+
+    FILE *fd1 = fopen("super.bin", "wb");
+    if (!fd1) {
+        perror("Failed to open super.bin for writing");
+        fclose(fd);
+        return -1;
+    }
+
+    fwrite(&s_block, sizeof(superblock), 1, fd1);
+
+    for (int i = 0; i < MAX_FILES; i++) {
+        printf("%s : %s\n", file_array[i].path, file_array[i].name);
+    }
 
     fclose(fd);
     fclose(fd1);
 
     return 0;
+}
+
+void restore_file_system() {
+    FILE *fd = fopen("file_structure.bin", "rb");
+    if (fd) {
+        printf("File system restored!\n");
+
+        root = malloc(sizeof(filetype));
+        deserialize_filetype_from_file(root, fd);
+
+        FILE *fd1 = fopen("super.bin", "rb");
+
+        fread(&s_block, sizeof(superblock), 1, fd1);
+
+        fclose(fd);
+        fclose(fd1);
+    } else {
+        printf("New file system!\n");
+        superblock_init();
+        root_dir_init();
+    }
 }
