@@ -3,6 +3,7 @@
 
 #include "superblock.h"
 #include "filetype.h"
+#include "sys/types.h"
 
 typedef struct filetype filetype;
 typedef struct inode {

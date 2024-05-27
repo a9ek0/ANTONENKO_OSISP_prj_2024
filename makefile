@@ -1,6 +1,6 @@
 CC = gcc
-DEBUG_FLAGS = -g -ggdb -std=c11 -W -Wall -Wextra
-RELEASE_FLAGS = -D_FILE_OFFSET_BITS=64 -Wno-unused-parameter -Wno-unused-variable
+DEBUG_FLAGS = -D_FILE_OFFSET_BITS=64 -g -ggdb -std=c11 -pedantic -W -Wall -Wextra
+RELEASE_FLAGS = -D_FILE_OFFSET_BITS=64 -std=c11 -pedantic -W -Wall -Wextra -Werror
 CFLAGS = $(RELEASE_FLAGS)
 BUILD_DIR = build/release
 
@@ -26,7 +26,7 @@ $(BUILD_DIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf *.o $(BUILD_DIR)
+	rm -rf *.o build/
 
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: all

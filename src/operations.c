@@ -64,7 +64,7 @@ int sfs_mkdir(const char *path, mode_t mode) {
 
     save_system_state();
 
-    free(pathname); // Free allocated pathname after use
+    free(pathname);
 
     return 0;
 }
@@ -400,9 +400,9 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 
     // Ensure that the requested read does not exceed the file size
     size_t read_size = size;
-    if (offset + size > file->inum->size) {
+    if (offset + size > (size_t)file->inum->size) {
         read_size = file->inum->size - offset;
-        if (read_size < 0) {
+        if ((ssize_t)read_size < 0) {
             return 0; // Attempt to read beyond the end of the file
         }
     }
@@ -448,7 +448,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
 
     size_t buf_len = strlen(buf);
     // Ensure that the file size does not exceed the maximum value for its type
-    if (buf_len > INT_MAX - file->inum->size) {
+    if (buf_len > (size_t)INT_MAX - file->inum->size) {
         return -EFBIG; // File too large
     }
 
@@ -472,7 +472,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
             strncat(&s_block.data_blocks[block_size * (file->inum->datablocks[currblk])], cpystr, len1);
             strncpy(&s_block.data_blocks[block_size * (file->inum->datablocks[currblk + 1])], buf + len1,
                     buf_len - len1);
-            file->inum->size += (int) buf_len; // Safe cast after size check
+            file->inum->size += (int) buf_len;
             file->inum->blocks++;
             free(cpystr);
         }
@@ -480,9 +480,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset, stru
 
     save_system_state();
 
-    return (int) buf_len; // Safe cast after size check
+    return (int) buf_len;
 }
-
 
 int sfs_rename(const char *from, const char *to) {
     printf("Renaming file/directory from %s to %s\n", from, to);
@@ -554,16 +553,6 @@ int sfs_rename(const char *from, const char *to) {
 
     save_system_state();
 
-    return 0;
-}
-
-int sfs_truncate(const char *path, off_t size) {
-    // This function is currently a placeholder and does not perform any operations.
-    return 0;
-}
-
-int sfs_access(const char *path, int mask) {
-    // This function is currently a placeholder and does not perform any operations.
     return 0;
 }
 

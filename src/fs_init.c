@@ -1,9 +1,6 @@
 #include "../include/fs_init.h"
 
-//superblock spblock;
 filetype *root;
-filetype file_array[MAX_FILES];
-
 
 void root_dir_init() {
     s_block.inode_bitmap[1] = 1; // Mark inode 1 as used
@@ -58,19 +55,19 @@ void root_dir_init() {
 
 void print_superblock_details() {
     printf("Data blocks:\n");
-    for (int i = 0; i < sizeof(s_block.data_blocks); i++) {
+    for (size_t i = 0; i < sizeof(s_block.data_blocks); i++) {
         printf("%c.", s_block.data_blocks[i]);
     }
     printf("\n");
 
     printf("Data Bitmap:\n");
-    for (int i = 0; i < sizeof(s_block.data_bitmap); i++) {
+    for (size_t i = 0; i < sizeof(s_block.data_bitmap); i++) {
         printf("%c.", s_block.data_bitmap[i]);
     }
     printf("\n");
 
     printf("Inode Bitmap:\n");
-    for (int i = 0; i < sizeof(s_block.inode_bitmap); i++) {
+    for (size_t i = 0; i < sizeof(s_block.inode_bitmap); i++) {
         printf("%c.", s_block.inode_bitmap[i]);
     }
     printf("\n");

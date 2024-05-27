@@ -7,7 +7,7 @@
 #include "../include/operations.h"
 #include "../include/utilities.h"
 
-#define MAX_FILES 31
+#define S_IFDIR 0x4000
 
 void root_dir_init();
 

@@ -23,6 +23,7 @@ typedef struct filetype {
     char type[20];               // Type of the filetype
 } filetype;
 
+extern char *strdup(const char *s);
 extern filetype *root;
 extern filetype file_array[MAX_FILES];
 
