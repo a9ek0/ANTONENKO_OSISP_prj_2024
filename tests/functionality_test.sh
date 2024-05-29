@@ -7,14 +7,6 @@ clear
 echo "Changing to the mnt directory..."
 cd /home/alexander/mnt
 
-# Create the qwe directory
-echo "Creating the qwe directory..."
-mkdir testDir
-
-# Change to the qwe directory
-echo "Changing to the qwe directory..."
-cd testDir
-
 # Create the testFile.txt file
 echo "Creating the testFile.txt file..."
 touch testFile.txt
@@ -31,9 +23,33 @@ echo "Test" >> testFile.txt
 echo "Contents of the testFile.txt file:"
 cat testFile.txt
 
-# Open the testFile.txt file
-echo "Opening the testFile.txt file..."
-open testFile.txt
+# Create the test directory
+echo "Creating the test directory..."
+mkdir testDir
+
+# Change to the qwe directory
+echo "Moving testFile.txt to the test directory..."
+mv testFile.txt testDir
+
+# Change to the testDir directory
+echo "Changing to the testDir directory..."
+cd testDir
+
+# Display the contents of the testFile.txt file
+echo "Contents of the testFile.txt file:"
+cat testFile.txt
+
+# Change to the qwe directory
+echo "Renaming testFile.txt to testFile2.txt ..."
+mv testFile.txt testFile2.txt
+
+# Write "Test" to the testFile.txt file
+echo "Writing 'Test' to the testFile2.txt file..."
+echo "Test" >> testFile2.txt
+
+# Open the testFile2.txt file
+echo "Opening the testFile2.txt file..."
+open testFile2.txt
 
 # Display a script completion message
 echo "Script completed"
